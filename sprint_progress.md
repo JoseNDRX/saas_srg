@@ -6,7 +6,7 @@ Este documento detalla el progreso actual del proyecto basado en el PRD original
 - **Sprint 1 (Core & Enrutamiento):** 100% ✅
 - **Sprint 2 (vCard MVP & Editor):** 100% ✅ 
 - **Sprint 3 (Autenticación & WhatsApp):** 100% ✅ 
-- **Sprint 4 (SSL & Analytics):** 40% 🚧 (Backend listo, falta UI)
+- **Sprint 4 (Analytics & GitHub):** 85% ✅ (Publicado en GitHub, Analytics UI lista)
 
 ---
 
@@ -29,18 +29,19 @@ Este documento detalla el progreso actual del proyecto basado en el PRD original
 *   **Integración WhatsApp:** Generación automática de mensajes formateados para pedidos rápidos. [Completado]
 *   **Redirector Inteligente (API QR):** Endpoint centralizado para rastrear escaneos y redirigir sin romper el código impreso. [Completado]
 
-### 🚧 Sprint 4: Automatización & Analíticas (En curso)
-*   **Módulo de Analíticas:** Backend captura User-Agent, Referrer e IP de cada escaneo. [Backend Listo]
-*   **Dashboard Visual:** Gráficos y tablas para que el usuario vea su tráfico en el panel. [Pendiente UI]
+### ✅ Sprint 4: Automatización & Analíticas (Publicado)
+*   **Módulo de Analíticas:** Dashboard visual con gráficas de rendimiento y actividad reciente por país. [Completado]
+*   **GitHub Repository:** Proyecto inicializado y publicado en JoseNDRX/saas_srg (main). [Completado]
+*   **Módulo de Publicación:** Guía de despliegue `DEPLOYMENT.md` creada para Vercel. [Completado]
 *   **Provisionamiento SSL:** Automatización de certificados para dominios Elite. [Pendiente Infra]
 
 ---
 
 ## ⚠️ Bloqueadores / Tareas Pendientes Inmediatas (Backlog)
-1.  **Dashboard de Analíticas:** Crear la nueva pestaña (`activeTab === 'analytics'`) con gráficos de barras para los escaneos diarios.
-2.  **Refactor de Estilos:** Pequeñas correcciones de estética en el modo "Claro / Oscuro" de la landing page.
-3.  **Deploy Final:** Validar las variables de entorno de Supabase en producción (Vercel/Cloud Run).
+1.  **Deploy a Cloud Run / Vercel:** Finalizar la carga de variables de entorno en producción.
+2.  **Refactor de Estilos:** Pequeñas correcciones de estética en la landing page.
+3.  **Dominios Custom:** Implementar la lógica de mapeo DNS para el Tier Elite.
 
 ---
 
-*Última actualización: 28 de Marzo, 2026 (13:25)*
+*Última actualización: 28 de Marzo, 2026 (14:00)*
