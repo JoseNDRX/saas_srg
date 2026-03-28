@@ -1,0 +1,102 @@
+​1. Visión General del Proyecto​
+​ rear un ecosistema SaaS (Software as a Service) para la gestión de identidad digital,​
+C
+​automatizando la creación de micro-sitios (vCards, Menús y Escaparates) bajo un modelo de​
+​marcas gemelas​​: standmx.com (comercial/corporativo) y puestoweb.com (motor​
+​técnico/constructor).​
+
+​2. Arquitectura de Identidad y Enrutamiento​
+​ l sistema debe procesar las peticiones mediante un​​Middleware de Resolución de URLs​
+E
+​basado en el nivel de suscripción:​
+​Nivel​
+
+​Estructura de URL​
+
+​Tipo de Renderizado​
+
+​Gratis​
+
+​puestoweb.com/d/[hash-id]​
+
+​ icha de directorio básica con​
+F
+​slots de publicidad (Google​
+​AdSense/Interna).​
+
+​Básico​
+
+​ uestoweb.com/[slug-person​ ​PWA Lite (vCard o Menú) con​
+p
+​alizado]​
+​branding propio del cliente y​
+​SEO indexable.​
+
+​Pro​
+
+​[cliente].standmx.com​
+
+​ scaparate Digital completo​
+E
+​con subdominio dinámico y SSL​
+​automático.​
+
+​Elite​
+
+​www.cliente.com​
+
+​ apeo de DNS (CNAME) para​
+M
+​dominios externos del cliente.​
+
+​3. Especificaciones por Módulo (Backend)​
+​A. Gestión de Subdominios y Slugs​
+​●​ ​Wildcard DNS:​​Configurar el servidor para capturar​​todos los subdominios de​
+
+*​ .standmx.com.​
+​●​ ​SSL Provisioning:​​Integración con la API de​​Let's​​Encrypt​​o​​Vercel/Cloudflare​​para emitir​
+​certificados automáticos al crear un subdominio o conectar un dominio externo.​
+​ ​ ​Reserva de Slugs:​​Lista negra de términos prohibidos​​(admin, login, api, etc.) para evitar​
+●
+​colisiones en la ruta raíz.​
+
+​B. Motor de Contenidos (No-Code Editor)​
+​●​ T
+​ emplates Dinámicos:​​Sistema de componentes (React/Vue)​​que carguen datos desde​
+​una base de datos NoSQL (para flexibilidad en campos de menús y vCards).​
+​●​ ​Smart QR:​​Generación de códigos QR vectoriales vinculados​​a la URL de suscripción. Si el​
+​usuario sube de nivel (de slug a subdominio), el sistema debe realizar un​​301 Redirect​
+​automático para no romper los QRs impresos.​
+
+​4. Front-End y Experiencia de Usuario (UX)​
+​●​ M
+​ obile-First PWA:​​Todos los productos (vCards y Menús)​​deben cumplir con los​
+​estándares de Progressive Web App (instalables, rápidos y con splash screen​
+​personalizado).​
+​●​ ​Metadata Dinámica:​​Generación automática de etiquetas​​Open Graph para que al​
+​compartir el link en WhatsApp/Redes se vea la foto y descripción del negocio, no de la​
+​plataforma.​
+​●​ ​Editor de Usuario:​​Interfaz simplificada para carga​​de logo, cambio de colores​
+​institucionales y actualización de precios (Menús).​
+
+​5. Stack Tecnológico Sugerido​
+​​ L
+●
+​ enguaje/Framework:​​Next.js (por el manejo de SSR​​para SEO y subdominios dinámicos).​
+​●​ ​Base de Datos:​​PostgreSQL (para usuarios y suscripciones)​​+ MongoDB (para la​
+​estructura flexible de los menús/vCards).​
+​●​ ​Infraestructura:​​Vercel o AWS (Lambda/Edge functions)​​para escalabilidad inmediata de​
+​los subdominios.​
+​●​ ​Seguridad:​​Autenticación centralizada (Auth0 o Supabase​​Auth) para que una misma​
+​cuenta gestione múltiples activos en ambas marcas.​
+
+​6. Roadmap de Implementación (Sprints)​
+​1.​ ​Sprint 1:​​Core de usuarios, base de datos y lógica​​de enrutamiento (Slugs vs​
+​Subdominios).​
+
+​ .​ ​Sprint 2:​​Constructor de vCards (MVP) y lógica de generación de códigos QR.​
+2
+​3.​ ​Sprint 3:​​Módulo de Menús Digitales con integración de pedidos vía WhatsApp.​
+​4.​ ​Sprint 4:​​Automatización de SSL para dominios propios y dashboard de analíticas básicas.​
+
+
