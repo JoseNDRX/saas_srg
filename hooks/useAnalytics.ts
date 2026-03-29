@@ -20,38 +20,32 @@ export function useAnalytics(userId: string | null) {
         // 1. Obtener los micrositios del usuario
         const { data: microsites } = await supabase
           .from('microsites')
-          .select('id, slug, qr_codes(id)')
-          .eq('owner_id', userId);
+          .select('id, slug')
+          .eq('owner_id', userId!);
 
         if (!microsites || microsites.length === 0) {
           setStats({ totalScans: 0, byCountry: {}, byMicrosite: [] });
           return;
         }
 
-        const qrIds = microsites.flatMap(m => (m.qr_codes as any[]).map(qr => qr.id));
+        const micrositeIds = microsites.map(m => m.id);
 
-        if (qrIds.length === 0) {
-           setStats({ totalScans: 0, byCountry: {}, byMicrosite: [] });
-           return;
-        }
-
-        // 2. Obtener todas las analíticas filtradas por esos QRs
+        // 2. Obtener todas las analíticas filtradas por micrositios
         const { data: analytics, error } = await supabase
           .from('qr_analytics')
           .select('*')
-          .in('qr_code_id', qrIds);
+          .in('microsite_id', micrositeIds);
 
         if (error) throw error;
 
         // 3. Procesar datos
-        const countryCodes = analytics.reduce((acc: any, curr: any) => {
+        const countryCodes = (analytics || []).reduce((acc: any, curr: any) => {
           acc[curr.ip_country || 'Unknown'] = (acc[curr.ip_country || 'Unknown'] || 0) + 1;
           return acc;
         }, {});
 
         const sitePerformance = microsites.map(m => {
-          const mQrIds = (m.qr_codes as any[]).map(qr => qr.id);
-          const scans = analytics.filter(a => mQrIds.includes(a.qr_code_id)).length;
+          const scans = (analytics || []).filter(a => a.microsite_id === m.id).length;
           return { name: m.slug, scans };
         });
 

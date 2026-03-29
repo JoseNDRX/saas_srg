@@ -54,7 +54,7 @@ export function useMicrosite(userId: string | null) {
           ...updates,
           owner_id: userId,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .select()
         .single();
 

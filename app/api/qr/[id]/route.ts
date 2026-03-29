@@ -21,10 +21,10 @@ export async function GET(
     return new NextResponse('QR ID required', { status: 400 });
   }
 
-  // 1. Look up the QR code
+  // 1. Look up the QR code (include microsite_id for analytics)
   const { data: qr, error } = await supabase
     .from('qr_codes')
-    .select('current_url, redirect_url, is_301_redirect')
+    .select('microsite_id, current_url, redirect_url, is_301_redirect')
     .eq('id', id)
     .single();
 
@@ -35,10 +35,10 @@ export async function GET(
   // 2. Log analytics (fire-and-forget)
   const userAgent = request.headers.get('user-agent');
   const referrer = request.headers.get('referer');
-  supabase
+  void supabase
     .from('qr_analytics')
     .insert({
-      qr_code_id: id,
+      microsite_id: qr.microsite_id,
       scanned_at: new Date().toISOString(),
       user_agent: userAgent,
       referrer,
@@ -53,3 +53,4 @@ export async function GET(
     status: qr.is_301_redirect ? 301 : 302,
   });
 }
+

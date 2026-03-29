@@ -76,6 +76,15 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { email: string; id: string };
         Update: Partial<Database['public']['Tables']['profiles']['Row']>;
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_id_fkey';
+            columns: ['id'];
+            isOneToOne: true;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
       };
 
       microsites: {
@@ -94,6 +103,15 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['microsites']['Row']> & { owner_id: string; slug: string; type: string };
         Update: Partial<Database['public']['Tables']['microsites']['Row']>;
+        Relationships: [
+          {
+            foreignKeyName: 'microsites_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
       };
 
       qr_codes: {
@@ -108,6 +126,15 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['qr_codes']['Row']> & { microsite_id: string; current_url: string };
         Update: Partial<Database['public']['Tables']['qr_codes']['Row']>;
+        Relationships: [
+          {
+            foreignKeyName: 'qr_codes_microsite_id_fkey';
+            columns: ['microsite_id'];
+            isOneToOne: false;
+            referencedRelation: 'microsites';
+            referencedColumns: ['id'];
+          }
+        ];
       };
 
       qr_analytics: {
@@ -121,6 +148,15 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['qr_analytics']['Row']> & { microsite_id: string };
         Update: Partial<Database['public']['Tables']['qr_analytics']['Row']>;
+        Relationships: [
+          {
+            foreignKeyName: 'qr_analytics_microsite_id_fkey';
+            columns: ['microsite_id'];
+            isOneToOne: false;
+            referencedRelation: 'microsites';
+            referencedColumns: ['id'];
+          }
+        ];
       };
     };
     Views: Record<string, never>;
