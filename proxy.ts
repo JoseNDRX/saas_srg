@@ -33,7 +33,8 @@ export function proxy(request: NextRequest) {
                       hostWithoutPort === '127.0.0.1' || 
                       hostWithoutPort.startsWith('192.168.') ||
                       hostWithoutPort.includes('ngrok-free.dev') ||
-                      hostWithoutPort.includes('ngrok-free.app');
+                      hostWithoutPort.includes('ngrok-free.app') ||
+                      hostWithoutPort.includes('vercel.app');
   
   const isStandMXBase = hostWithoutPort === 'standmx.com' || hostWithoutPort === 'www.standmx.com';
   const parts = hostWithoutPort.split('.');
@@ -60,7 +61,7 @@ export function proxy(request: NextRequest) {
   }
 
   // PuestoWeb / Local Base routes
-  const isLocalBase = hostWithoutPort === 'localhost' || hostWithoutPort === '127.0.0.1' || (hostWithoutPort.startsWith('192.168.') && parts.length === 4) || hostWithoutPort.includes('ngrok-free.dev') || hostWithoutPort.includes('ngrok-free.app');
+  const isLocalBase = hostWithoutPort === 'localhost' || hostWithoutPort === '127.0.0.1' || (hostWithoutPort.startsWith('192.168.') && parts.length === 4) || hostWithoutPort.includes('ngrok-free.dev') || hostWithoutPort.includes('ngrok-free.app') || hostWithoutPort.includes('vercel.app');
   const isPuestoWebBase = hostWithoutPort === 'puestoweb.com' || hostWithoutPort === 'www.puestoweb.com';
 
   if (isPuestoWebBase || isLocalBase) {
