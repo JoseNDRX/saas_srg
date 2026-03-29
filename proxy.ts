@@ -34,7 +34,7 @@ export function proxy(request: NextRequest) {
     hostWithoutPort.startsWith('192.168.') ||
     hostWithoutPort.includes('ngrok-free.dev') ||
     hostWithoutPort.includes('ngrok-free.app') ||
-    hostWithoutPort.includes('saassrg2026.vercel.app/');
+    hostWithoutPort.includes('vercel.app/');
 
   const isStandMXBase = hostWithoutPort === 'standmx.com' || hostWithoutPort === 'www.standmx.com';
   const parts = hostWithoutPort.split('.');
