@@ -11,6 +11,24 @@ const inter = Inter({
   display: 'swap',
 });
 
+export const metadata: Metadata = {
+  title: 'StandMX | Digital Identity SaaS',
+  description: 'Automated Digital Identity Ecosystem via Microsites (vCards, Menus, Showcases).',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'StandMX',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#00c9b1',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: {

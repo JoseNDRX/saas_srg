@@ -1,0 +1,21 @@
+{
+  "name": "StandMX identity",
+  "short_name": "StandMX",
+  "description": "Tu identidad digital profesional en un solo escaneo.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#00c9b1",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

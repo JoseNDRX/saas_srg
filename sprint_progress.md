@@ -6,14 +6,15 @@ Este documento detalla el progreso actual del proyecto basado en el PRD original
 - **Sprint 1 (Core & Enrutamiento):** 100% ✅
 - **Sprint 2 (vCard MVP & Editor):** 100% ✅ 
 - **Sprint 3 (Autenticación & WhatsApp):** 100% ✅ 
-- **Sprint 4 (Analytics & GitHub):** 85% ✅ (Publicado en GitHub, Analytics UI lista)
+- **Sprint 4 (Showcase & Publicación):** 95% 🚧 (Constructor de Galería listo, Ngrok implementado)
+- **Sprint 5 (PWA & SEO):** 15% 🚧 (Pendiente Manifest, Icons y OG Tags dinámicos)
 
 ---
 
 ## 🛠️ Desglose Detallado
 
 ### ✅ Sprint 1: Core de Usuarios & Lógica de Redirección
-*   **Lógica de Enrutamiento (proxy.ts):** Resolución dinámica de subdominios (`slug.localhost`), dominios propios y hashes. [Completado]
+*   **Lógica de Enrutamiento (proxy.ts):** Resolución dinámica de subdominios (`slug.localhost`), dominios propios y túneles ngrok. [Completado]
 *   **Arquitectura Multi-tenant:** Motor capaz de servir múltiples clientes desde una sola instancia de Next.js. [Completado]
 *   **Base de Datos (Supabase):** Esquema de tablas `profiles`, `microsites`, `qr_codes` y `qr_analytics` creados y vinculados. [Completado]
 
@@ -24,24 +25,26 @@ Este documento detalla el progreso actual del proyecto basado en el PRD original
 *   **Seguridad RLS (Row Level Security):** Políticas de base de datos para protección de datos por usuario. [Completado]
 
 ### ✅ Sprint 3: Autenticación & WhatsApp Checkout
-*   **Autenticación Real (Supabase Auth):** Sistema completo de Registro, Login y Protección de Rutas (Bye bye MOCK_USER_ID). [Completado]
+*   **Autenticación Real (Supabase Auth):** Sistema completo de Registro, Login y Protección de Rutas. [Completado]
 *   **Carrito de Compras v1:** Sistema local de selección de productos con cálculo de total. [Completado]
 *   **Integración WhatsApp:** Generación automática de mensajes formateados para pedidos rápidos. [Completado]
 *   **Redirector Inteligente (API QR):** Endpoint centralizado para rastrear escaneos y redirigir sin romper el código impreso. [Completado]
 
-### ✅ Sprint 4: Automatización & Analíticas (Publicado)
+### ✅ Sprint 4: Showcase & Exposure
+*   **Módulo Showcase:** Galería de proyectos con soporte para **subida directa de archivos** a Supabase Storage (`microsite-images`). [Completado]
+*   **Página de Contacto:** Formulario de solicitud integrado con links directos a email, WhatsApp y teléfono. [Completado]
+*   **Exposición MVP (Ngrok):** Configuración de authtoken y túnel para pruebas externas en tiempo real. [Completado]
 *   **Módulo de Analíticas:** Dashboard visual con gráficas de rendimiento y actividad reciente por país. [Completado]
-*   **GitHub Repository:** Proyecto inicializado y publicado en JoseNDRX/saas_srg (main). [Completado]
-*   **Módulo de Publicación:** Guía de despliegue `DEPLOYMENT.md` creada para Vercel. [Completado]
-*   **Provisionamiento SSL:** Automatización de certificados para dominios Elite. [Pendiente Infra]
 
 ---
 
 ## ⚠️ Bloqueadores / Tareas Pendientes Inmediatas (Backlog)
-1.  **Deploy a Cloud Run / Vercel:** Finalizar la carga de variables de entorno en producción.
-2.  **Refactor de Estilos:** Pequeñas correcciones de estética en la landing page.
-3.  **Dominios Custom:** Implementar la lógica de mapeo DNS para el Tier Elite.
+
+1.  **⚙️ PWA Engine**: Crear `manifest.json`, generar iconos de marca (192x192, 512x512) y registrar el service worker para modo App.
+2.  **🖼️ Dynamic OG Tags**: Configurar `generateMetadata` para usar el logo de la empresa o una imagen del proyecto en la previsualización de links (WhatsApp Shared).
+3.  **📧 Backend de Contacto**: Conectar el formulario de la página de contacto a un servicio de envío de correos (Resend/SendGrid).
+4.  **🌐 Dominios Custom (Elite)**: Implementar la validación y mapeo de CNAMEs para dominios externos que apunten al túnel/servidor.
 
 ---
 
-*Última actualización: 28 de Marzo, 2026 (14:00)*
+*Última actualización: 29 de Marzo, 2026 (10:25 AM)*

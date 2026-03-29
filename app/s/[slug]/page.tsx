@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { MicrositeViewer } from '@/components/MicrositeViewer';
 import { getSupabase } from '@/lib/supabase';
 
-// Eliminamos MOCK_DB y usamos Supabase Real
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = getSupabase();
@@ -27,10 +26,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       siteName: 'StandMX',
       images: [
         {
-          url: 'https://standmx.com/default-og.png',
-          width: 800,
-          height: 600,
-          alt: `Logo de ${content.displayName}`,
+          url: content.projects?.[0]?.imageUrl || 'https://standmx.com/default-og.png',
+          width: 1200,
+          height: 630,
+          alt: `Imagen de ${content.displayName}`,
         },
       ],
       locale: 'es_MX',
@@ -41,13 +40,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function DomainPage({ 
   params 
-}: { 
+ }: { 
   params: Promise<{ slug: string }> 
 }) {
   const { slug } = await params;
   const supabase = getSupabase();
 
-  // Consultar Supabase Real por el SLUG (subdominio)
   const { data: microsite, error } = await supabase
     .from('microsites')
     .select('*')
@@ -58,7 +56,6 @@ export default async function DomainPage({
     return notFound();
   }
 
-  // Mapear el registro de base de datos al formato del visualizador
   const content = microsite.content as any;
   const viewerData = {
     name: content.displayName || microsite.slug,
