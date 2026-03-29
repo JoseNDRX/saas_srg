@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { 
-  LayoutTemplate, 
   Plus, 
   X,
   QrCode, 
@@ -15,20 +14,19 @@ import {
   Smartphone, 
   Save, 
   Loader2, 
-  CheckCircle2, 
   Trash2, 
   Download, 
-  Share2, 
   ExternalLink,
   LogOut,
   TrendingUp,
   MapPin,
-  Clock,
   Upload,
   Layout as LayoutIcon,
   ChevronLeft,
   Eye,
-  Settings
+  ChevronRight,
+  Layers,
+  LucideIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
@@ -36,6 +34,7 @@ import { MicrositeViewer } from '@/components/MicrositeViewer';
 
 /**
  * Dashboard Constructor (Next.js 16 + Supabase)
+ * Fully typed to avoid IDE 'never' inference errors.
  */
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -50,7 +49,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
 
-  // Default site structure
   const [siteData, setSiteData] = useState({
     slug: '',
     type: 'vCard',
@@ -61,157 +59,152 @@ export default function DashboardPage() {
       card: '#18181b',
     },
     content: {
-      displayName: '',
+      displayName: 'Mi Marca',
       title: '',
       bio: '',
       whatsapp: '',
       phone: '',
       email: '',
-      items: [], // For Menu
-      projects: [], // For Showcase
-      socials: [],
+      items: [] as any[], 
+      projects: [] as any[], 
+      sociallinks: [] as any[],
     }
   });
 
-  // Auth Protection
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
+    if (!authLoading && !user) router.push('/login');
   }, [user, authLoading, router]);
 
-  // Load User Microsite
   useEffect(() => {
-    if (!user) return;
-
+    if (!user?.id) return;
+    
     async function loadData() {
-      const { data, error } = await supabase
-        .from('microsites')
-        .select('*')
-        .eq('owner_id', user?.id)
-        .maybeSingle();
+      try {
+        // Casting 'supabase.from' return to avoid 'never' inference
+        const { data, error } = await (supabase.from('microsites') as any)
+          .select('*')
+          .eq('owner_id', user?.id)
+          .maybeSingle();
 
-      if (data) {
-        setMicrosite(data);
-        setSiteData({
-          slug: data.slug || '',
-          type: data.type || 'vCard',
-          colors: data.config?.colors || siteData.colors,
-          content: { ...siteData.content, ...data.content }
-        });
+        if (error) throw error;
+
+        if (data) {
+          setMicrosite(data);
+          setSiteData({
+            slug: data.slug || '',
+            type: data.type || 'vCard',
+            colors: (data.config as any)?.colors || siteData.colors,
+            content: { ...siteData.content, ...(data.content as any) }
+          });
+        }
+      } catch (e) {
+        console.error('Error loading dashboard data:', e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     loadData();
-  }, [user]);
+  }, [user?.id]);
 
-  // Load Analytics
   useEffect(() => {
-    if (activeTab === 'analíticas' && microsite?.id) {
-       fetchAnalytics();
-    }
-  }, [activeTab, microsite]);
+    if (activeTab === 'analíticas' && microsite?.id) fetchAnalytics();
+  }, [activeTab, microsite?.id]);
 
   async function fetchAnalytics() {
+     if (!microsite?.id) return;
      setAnalyticsLoading(true);
-     const { data, error } = await supabase
-        .from('qr_analytics')
-        .select('*')
-        .eq('microsite_id', microsite.id)
-        .order('scanned_at', { ascending: false });
+     try {
+       const { data, error } = await (supabase.from('qr_analytics') as any)
+         .select('*')
+         .eq('microsite_id', microsite.id)
+         .order('scanned_at', { ascending: false });
 
-     if (data) {
-        const byCountry: any = {};
-        data.forEach(s => {
-           const c = s.ip_country || 'Unknown';
-           byCountry[c] = (byCountry[c] || 0) + 1;
-        });
+       if (error) throw error;
 
-        // Simple aggregation for UI
-        setStats({
-           totalScans: data.length,
-           byCountry,
-           raw: data,
-           byMicrosite: [{ name: siteData.slug || 'Mi Sitio', scans: data.length }]
-        });
+       if (data) {
+          const byCountry: Record<string, number> = {};
+          data.forEach((s: any) => { 
+            const c = s.ip_country || 'Unknown'; 
+            byCountry[c] = (byCountry[c] || 0) + 1; 
+          });
+          setStats({ 
+            totalScans: data.length, 
+            byCountry, 
+            raw: data, 
+            byMicrosite: [{ name: siteData.slug || 'Mi Sitio', scans: data.length }] 
+          });
+       }
+     } catch (e) {
+       console.error('Analytics error:', e);
+     } finally {
+       setAnalyticsLoading(false);
      }
-     setAnalyticsLoading(false);
   }
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     setSaving(true);
     setLastSaved(false);
-
-    const payload = {
-      owner_id: user.id,
-      slug: siteData.slug,
-      type: siteData.type,
-      config: { colors: siteData.colors },
-      content: siteData.content,
-      updated_at: new Date().toISOString(),
+    
+    const payload = { 
+      owner_id: user.id, 
+      slug: siteData.slug, 
+      type: siteData.type, 
+      config: { colors: siteData.colors }, 
+      content: siteData.content, 
+      updated_at: new Date().toISOString() 
     };
-
-    let result;
-    if (microsite) {
-      result = await supabase.from('microsites').update(payload).eq('id', microsite.id);
-    } else {
-      result = await supabase.from('microsites').insert([payload]).select().single();
-      if (result.data) setMicrosite(result.data);
-    }
-
-    setSaving(false);
-    if (!result.error) {
-      setLastSaved(true);
-      setTimeout(() => setLastSaved(false), 3000);
-    } else {
-      alert(result.error.message);
+    
+    try {
+      let result;
+      if (microsite?.id) {
+        result = await (supabase.from('microsites') as any).update(payload).eq('id', microsite.id);
+      } else {
+        result = await (supabase.from('microsites') as any).insert([payload]).select().single();
+        if (result.data) setMicrosite(result.data);
+      }
+      
+      if (result.error) throw result.error;
+      
+      setLastSaved(true); 
+      setTimeout(() => setLastSaved(false), 3000); 
+    } catch (e: any) {
+      alert(`Error al guardar: ${e.message}`);
+    } finally {
+      setSaving(false);
     }
   };
 
   const updateContent = (key: string, value: any) => {
-    setSiteData(prev => ({
-      ...prev,
-      content: { ...prev.content, [key]: value }
-    }));
+    setSiteData(prev => ({ ...prev, content: { ...prev.content, [key]: value } }));
   };
 
-  const updateColors = (key: string, value: any) => {
-    setSiteData(prev => ({
-      ...prev,
-      colors: { ...prev.colors, [key]: value }
-    }));
+  const updateColors = (key: string, value: string) => {
+    setSiteData(prev => ({ ...prev, colors: { ...prev.colors, [key]: value } }));
   };
 
   const handleFileUpload = async (file: File, idx: number) => {
+    if (!user?.id) return;
     try {
       setUploadingIdx(idx);
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${user?.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('microsite-images')
-        .upload(filePath, file);
-
+      const filePath = `${user.id}/${fileName}`;
+      const { error: uploadError } = await (supabase.storage.from('microsite-images') as any).upload(filePath, file);
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('microsite-images')
-        .getPublicUrl(filePath);
-
+      const { data } = (supabase.storage.from('microsite-images') as any).getPublicUrl(filePath);
       const newP = [...(siteData.content.projects as any[])];
-      newP[idx].imageUrl = publicUrl;
+      newP[idx].imageUrl = data.publicUrl;
       updateContent('projects', newP);
-    } catch (error: any) {
-      console.error('Error:', error);
-      alert('Error subiendo imagen. Verifica que el bucket "microsite-images" exista en Supabase con acceso público.');
-    } finally {
-      setUploadingIdx(null);
+    } catch (error: any) { 
+      console.error(error);
+      alert('Error al subir la imagen.'); 
+    } finally { 
+      setUploadingIdx(null); 
     }
   };
 
-  const downloadQR = () => {
+  const downloadQR = useCallback(() => {
     const svg = document.querySelector('#preview-qr svg') as SVGSVGElement;
     if (!svg) return;
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -219,298 +212,235 @@ export default function DashboardPage() {
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
-      canvas.width = 1024;
-      canvas.height = 1024;
-      ctx?.drawImage(img, 0, 0, 1024, 1024);
-      const url = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `qr-${siteData.slug}.png`;
-      link.href = url;
-      link.click();
+      canvas.width = 2048;
+      canvas.height = 2048;
+      if (ctx) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, 2048, 2048);
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `qr-${siteData.slug || 'standmx'}.png`;
+        link.href = url;
+        link.click();
+      }
     };
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-  };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  }, [siteData.slug]);
 
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  useEffect(() => {
-    if (!loading && !authLoading) {
-      setIsInitialLoad(false);
-    }
-  }, [loading, authLoading]);
-
-  if (authLoading || (isInitialLoad && loading)) return (
-    <div className="h-full w-full flex flex-col items-center justify-center bg-background gap-6 transition-colors duration-500 min-h-screen">
+  if (authLoading || loading) return (
+    <div className="h-full w-full flex flex-col items-center justify-center bg-background gap-6 min-h-screen">
       <div className="relative">
         <div className="w-16 h-16 rounded-full border-t-2 border-primary animate-spin" />
-        <div className="absolute inset-0 flex items-center justify-center uppercase text-[10px] font-black text-primary animate-pulse">
-          SMX
-        </div>
-      </div>
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-foreground font-bold tracking-tight">Sincronizando con Supabase</p>
-        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest px-4 py-1 bg-muted rounded-full">Recuperando tu identidad digital...</p>
+        <div className="absolute inset-0 flex items-center justify-center uppercase text-[10px] font-black text-primary animate-pulse">SMX</div>
       </div>
     </div>
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full bg-[#09090b] overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-background overflow-hidden text-foreground selection:bg-primary/20">
       
-      {/* ── SIDEBAR NAV (Mini) ────────────────────────────────── */}
-      <div className="w-full md:w-20 order-2 md:order-1 border-t md:border-t-0 md:border-r border-[#27272a]/60 flex flex-row md:flex-col items-center py-4 md:py-6 gap-6 px-6 md:px-0 bg-[#111113] md:bg-transparent z-50">
-        <div className="flex-1 flex flex-row md:flex-col gap-4 md:gap-6 w-full justify-around md:justify-start">
-          <NavIcon icon={LayoutTemplate} active={activeTab === 'diseño'} onClick={() => {setActiveTab('diseño'); setShowMobilePreview(false);}} />
-          <NavIcon icon={Plus} active={activeTab === 'contenido'} onClick={() => {setActiveTab('contenido'); setShowMobilePreview(false);}} />
-          <NavIcon icon={QrCode} active={activeTab === 'qr'} onClick={() => {setActiveTab('qr'); setShowMobilePreview(false);}} />
-          <NavIcon icon={BarChart3} active={activeTab === 'analíticas'} onClick={() => {setActiveTab('analíticas'); setShowMobilePreview(false);}} />
-          <button 
-            onClick={() => setShowMobilePreview(!showMobilePreview)}
-            className={`md:hidden p-4 rounded-2xl transition-all ${showMobilePreview ? 'bg-indigo-500 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}
-          >
-            <Eye className="w-5 h-5" />
+      {/* ── SIDEBAR NAV ────────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 w-full md:relative md:w-28 md:h-full z-[100] md:z-50 p-4 md:p-0">
+        <div className="mx-auto max-w-lg md:max-w-none md:h-full bg-card/95 backdrop-blur-3xl md:bg-card border border-border md:border-t-0 md:border-r md:border-border rounded-[32px] md:rounded-none flex flex-row md:flex-col items-center py-4 md:py-10 px-6 md:px-0 shadow-2xl md:shadow-none">
+          <div className="hidden md:flex flex-col items-center gap-2 mb-14">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-brand flex items-center justify-center shadow-2xl shadow-primary/20">
+              <Layers className="w-7 h-7 text-white" strokeWidth={3} />
+            </div>
+          </div>
+          <div className="flex-1 flex flex-row md:flex-col gap-2 md:gap-8 w-full justify-around md:justify-center">
+            <NavIcon icon={LayoutIcon} active={activeTab === 'diseño'} onClick={() => {setActiveTab('diseño'); setShowMobilePreview(false);}} label="Estilo" />
+            <NavIcon icon={Plus} active={activeTab === 'contenido'} onClick={() => {setActiveTab('contenido'); setShowMobilePreview(false);}} label="Data" />
+            <NavIcon icon={QrCode} active={activeTab === 'qr'} onClick={() => {setActiveTab('qr'); setShowMobilePreview(false);}} label="Scan" />
+            <NavIcon icon={BarChart3} active={activeTab === 'analíticas'} onClick={() => {setActiveTab('analíticas'); setShowMobilePreview(false);}} label="Stats" />
+            <button onClick={() => setShowMobilePreview(!showMobilePreview)} className={`md:hidden p-3 rounded-2xl transition-all relative flex flex-col items-center gap-1.5 ${showMobilePreview ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`p-2.5 rounded-xl transition-all ${showMobilePreview ? 'bg-primary/15' : ''}`}>
+                 <Eye className="w-6 h-6" />
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-80">Monitor</span>
+            </button>
+          </div>
+          <button onClick={() => signOut().then(() => router.push('/login'))} className="flex p-4 rounded-2xl text-muted-foreground hover:text-red-500 hover:bg-red-500/5 transition-all md:mb-6 shrink-0 active:scale-90" title="Cerrar Ecosistema">
+            <LogOut className="w-6 h-6" />
           </button>
         </div>
-        
-        <button 
-          onClick={() => signOut().then(() => router.push('/login'))}
-          className="p-4 rounded-2xl text-zinc-600 hover:text-red-400 hover:bg-red-500/5 transition-all md:mb-4 shrink-0"
-          title="Cerrar Sesión"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
       </div>
 
-      {/* ── PANEL EDITOR (IZQUIERDA) ────────────────────────────── */}
-      <div className={`flex-1 md:w-[450px] md:flex-none border-r border-[#27272a]/60 flex flex-col order-1 md:order-2 bg-[#09090b] ${showMobilePreview ? 'hidden md:flex' : 'flex'}`}>
-        <div className="h-16 border-b border-[#27272a]/60 px-6 flex items-center justify-between shrink-0">
-          <div>
-            <h1 className="text-base font-black text-white flex items-center gap-2 uppercase tracking-wider">
-               {activeTab === 'diseño' && <><Palette className="w-4 h-4 text-[#00c9b1]" /> Diseño</>}
-               {activeTab === 'contenido' && <><Plus className="w-4 h-4 text-amber-500" /> Contenido</>}
-               {activeTab === 'qr' && <><QrCode className="w-4 h-4 text-emerald-400" /> Mi QR</>}
-               {activeTab === 'analíticas' && <><BarChart3 className="w-4 h-4 text-indigo-400" /> Analíticas</>}
-            </h1>
-            {lastSaved && activeTab !== 'analíticas' && <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-1 mt-0.5 animate-pulse">● Cambios guardados</span>}
+      {/* ── PANEL EDITOR ────────────────────────────────────────── */}
+      <div className={`flex-1 md:w-[500px] md:flex-none border-r border-border flex flex-col bg-background relative z-10 ${showMobilePreview ? 'hidden md:flex' : 'flex'}`}>
+        <header className="h-20 md:h-24 border-b border-border px-6 md:px-10 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-20 shrink-0">
+          <div className="flex items-center gap-5">
+            <div className="md:hidden w-12 h-12 rounded-2xl bg-gradient-brand flex items-center justify-center shadow-xl">
+              <Layers className="w-6 h-6 text-white" strokeWidth={3} />
+            </div>
+            <div>
+              <h1 className="text-xs font-black text-foreground flex items-center gap-3 uppercase tracking-[0.3em]">
+                 {activeTab === 'diseño' && <Palette className="w-4 h-4 text-primary" />}
+                 {activeTab === 'contenido' && <Plus className="w-4 h-4 text-amber-500" />}
+                 {activeTab === 'qr' && <QrCode className="w-4 h-4 text-emerald-400" />}
+                 {activeTab === 'analíticas' && <BarChart3 className="w-4 h-4 text-indigo-400" />}
+                 <span className="opacity-80">{activeTab}</span>
+              </h1>
+              {lastSaved && <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1.5 mt-1 animate-pulse">● Cloud Sync OK</span>}
+            </div>
           </div>
-          
-          {activeTab !== 'analíticas' && (
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-[#00c9b1] text-black text-[10px] font-black uppercase rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/20 active:scale-95">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              {saving ? '...' : 'Publicar'}
-            </button>
-          )}
-        </div>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-3 px-7 py-3.5 bg-gradient-brand text-black text-[11px] font-black uppercase rounded-[22px] hover:opacity-90 disabled:opacity-50 transition-all shadow-2xl shadow-primary/20 active:scale-95">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? '...' : 'Publicar'}
+          </button>
+        </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 custom-scrollbar pb-24 md:pb-8">
+        <main className="flex-1 overflow-y-auto w-full px-5 md:px-10 py-10 md:py-14 space-y-16 custom-scrollbar pb-40 md:pb-16">
           {activeTab === 'diseño' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-left-2 transition-all">
-              <Section title="Identidad" icon={Globe}>
-                <InputField label="Nombre de Marca" value={siteData.content.displayName} onChange={(v: any) => updateContent('displayName', v)} />
-                <SlugField value={siteData.slug} onChange={(v: any) => setSiteData(prev => ({ ...prev, slug: v }))} />
-                <SelectField label="Tipo de Sitio" value={siteData.type} options={['vCard', 'Menu', 'Showcase']} onChange={(v: any) => setSiteData(prev => ({ ...prev, type: v }))} />
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-16 w-full">
+              <Section title="ID del Micrositio" icon={Globe}>
+                <InputField label="Nombre de Marca" value={siteData.content.displayName} onChange={(v) => updateContent('displayName', v)} />
+                <SlugField value={siteData.slug} onChange={(v) => setSiteData(prev => ({ ...prev, slug: v }))} />
+                <SelectField label="Ecosistema" value={siteData.type} options={['vCard', 'Menu', 'Showcase']} onChange={(v) => setSiteData(prev => ({ ...prev, type: v }))} />
               </Section>
-              
-              <Section title="Branding" icon={Palette}>
-                <div className="grid grid-cols-2 gap-4">
+              <Section title="Estética Digital" icon={Palette}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
                   <ColorInput label="Primario" value={siteData.colors.primary} onChange={(v) => updateColors('primary', v)} />
                   <ColorInput label="Secundario" value={siteData.colors.secondary} onChange={(v) => updateColors('secondary', v)} />
                   <ColorInput label="Fondo" value={siteData.colors.background} onChange={(v) => updateColors('background', v)} />
                   <ColorInput label="Tarjeta" value={siteData.colors.card} onChange={(v) => updateColors('card', v)} />
                 </div>
               </Section>
-            </div>
+            </motion.div>
           )}
 
           {activeTab === 'contenido' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-left-2">
-              <Section title="Info Base" icon={Plus}>
-                <InputField label="TÍTULO / PROFESIÓN" value={siteData.content.title} onChange={(v: any) => updateContent('title', v)} />
-                <InputField label="BIO / DESCRIPCIÓN" value={siteData.content.bio} onChange={(v: any) => updateContent('bio', v)} isArea />
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-16 w-full">
+              <Section title="Data Pública" icon={Smartphone}>
+                <InputField label="Título Profesional" value={siteData.content.title} onChange={(v) => updateContent('title', v)} />
+                <InputField label="Bio / Misión" value={siteData.content.bio} onChange={(v) => updateContent('bio', v)} isArea />
               </Section>
-
-              <Section title="Contacto" icon={Smartphone}>
-                <InputField label="WhatsApp" value={siteData.content.whatsapp} onChange={(v: any) => updateContent('whatsapp', v)} />
-                <InputField label="Teléfono" value={siteData.content.phone} onChange={(v: any) => updateContent('phone', v)} />
-                <InputField label="Email" value={siteData.content.email} onChange={(v: any) => updateContent('email', v)} />
+              <Section title="Fuerza de Contacto" icon={Smartphone}>
+                <InputField label="WhatsApp (52...)" value={siteData.content.whatsapp} onChange={(v) => updateContent('whatsapp', v)} />
+                <InputField label="Teléfono Público" value={siteData.content.phone} onChange={(v) => updateContent('phone', v)} />
+                <InputField label="Email Corporativo" value={siteData.content.email} onChange={(v) => updateContent('email', v)} />
               </Section>
-
               {siteData.type === 'Menu' && (
-                <Section title="Platillos/Precios" icon={Plus}>
-                  <div className="space-y-3">
+                <Section title="Menú de Selección" icon={Plus}>
+                  <div className="space-y-5 w-full">
                     {(siteData.content.items as any[])?.map((item: any, idx: number) => (
-                      <div key={idx} className="flex gap-2 items-center bg-black/40 p-3 rounded-2xl border border-[#27272a]">
-                        <input className="bg-transparent text-sm w-full focus:outline-none" value={item.name} onChange={(e) => {
-                          const newI = [...siteData.content.items]; newI[idx].name = e.target.value; updateContent('items', newI);
-                        }} />
-                        <input className="bg-transparent text-sm w-16 text-right font-mono text-primary font-black outline-none" type="number" value={item.price} onChange={(e) => {
-                          const newI = [...siteData.content.items]; newI[idx].price = Number(e.target.value); updateContent('items', newI);
-                        }} />
-                        <button onClick={() => updateContent('items', siteData.content.items.filter((_: any, i: number) => i !== idx))} className="shrink-0 p-2 hover:bg-red-500/10 rounded-lg transition-colors">
-                          <Trash2 className="w-4 h-4 text-zinc-600 hover:text-red-500" />
+                      <div key={idx} className="flex gap-4 items-center bg-muted/30 p-5 rounded-3xl border border-border transition-all hover:bg-muted/50">
+                        <input className="bg-transparent text-sm w-full font-black outline-none text-foreground uppercase tracking-tight" value={item.name} onChange={(e) => { const newI = [...siteData.content.items]; newI[idx].name = e.target.value; updateContent('items', newI); }} />
+                        <input className="bg-transparent text-sm w-24 text-right font-black text-primary outline-none" type="number" value={item.price} onChange={(e) => { const newI = [...siteData.content.items]; newI[idx].price = Number(e.target.value); updateContent('items', newI); }} />
+                        <button onClick={() => updateContent('items', siteData.content.items.filter((_: any, i: number) => i !== idx))} className="p-3 rounded-2xl hover:bg-red-500/10 transition-colors">
+                          <Trash2 className="w-5 h-5 text-muted-foreground hover:text-red-500" />
                         </button>
                       </div>
                     ))}
-                    <button onClick={() => updateContent('items', [...(siteData.content.items || []), { name: 'Nuevo Item', price: 0 }])} className="w-full py-4 border border-dashed border-[#27272a] rounded-2xl text-[10px] font-black uppercase text-primary hover:bg-primary/5 flex justify-center gap-2 items-center transition-all active:scale-95"><Plus className="w-3 h-3" /> Agregar Platillo</button>
+                    <button onClick={() => updateContent('items', [...(siteData.content.items || []), { name: 'Item Nuevo', price: 99 }])} className="w-full py-6 border-2 border-dashed border-border rounded-[32px] text-[11px] font-black uppercase tracking-[0.2em] text-primary hover:bg-primary/5 hover:border-primary/40 flex justify-center gap-3 items-center transition-all active:scale-[0.98]"><Plus className="w-5 h-5" /> Agregar Item</button>
                   </div>
                 </Section>
               )}
-
               {siteData.type === 'Showcase' && (
                 <Section title="Galería Showcase" icon={LayoutIcon}>
-                  <div className="space-y-4">
+                  <div className="space-y-8 w-full">
                     {(siteData.content.projects as any[])?.map((project: any, idx: number) => (
-                      <div key={idx} className="bg-black/40 p-5 rounded-[28px] border border-[#27272a] space-y-4 relative group">
-                        <button 
-                          onClick={() => updateContent('projects', siteData.content.projects.filter((_: any, i: number) => i !== idx))}
-                          className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl z-20 active:scale-90 transition-transform"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                        
-                        <InputField label="Nombre del Proyecto" value={project.title} onChange={(v: any) => {
-                          const newP = [...siteData.content.projects]; newP[idx].title = v; updateContent('projects', newP);
-                        }} />
-                        
-                        <div className="space-y-2">
-                          <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest px-1">Imagen / Thumbnail</label>
-                          <div className="flex flex-col gap-2">
-                             <div className="flex gap-2">
-                                <input 
-                                  className="flex-1 bg-black/40 border border-[#27272a] rounded-xl px-4 py-3 text-xs focus:border-primary outline-none transition-all" 
-                                  placeholder="URL del archivo" 
-                                  value={project.imageUrl} 
-                                  onChange={(e) => {
-                                    const newP = [...(siteData.content.projects as any[])]; 
-                                    newP[idx].imageUrl = e.target.value; 
-                                    updateContent('projects', newP);
-                                  }} 
-                                />
+                      <div key={idx} className="bg-muted/30 p-8 rounded-[48px] border border-border space-y-8 relative shadow-2xl w-full">
+                        <button onClick={() => updateContent('projects', siteData.content.projects.filter((_: any, i: number) => i !== idx))} className="absolute -top-4 -right-4 w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl z-20 active:scale-90 transition-all border-4 border-background"><X className="w-6 h-6" /></button>
+                        <InputField label="Nombre del Proyecto" value={project.title} onChange={(v) => { const newP = [...siteData.content.projects]; newP[idx].title = v; updateContent('projects', newP); }} />
+                        <div className="space-y-4">
+                          <label className="text-[11px] text-muted-foreground font-black uppercase tracking-[0.3em] px-2">Activo Visual</label>
+                          <div className="flex flex-col gap-5">
+                             <div className="flex gap-4">
+                                <input className="flex-1 bg-background border border-border rounded-[22px] px-6 py-5 text-xs font-black focus:border-primary outline-none transition-all placeholder:opacity-20" placeholder="Link de imagen .jpg/.webp" value={project.imageUrl} onChange={(e) => { const newP = [...(siteData.content.projects as any[])]; newP[idx].imageUrl = e.target.value; updateContent('projects', newP); }} />
                                 <div className="relative">
-                                  <input 
-                                    type="file" 
-                                    className="absolute inset-0 opacity-0 cursor-pointer w-full" 
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleFileUpload(file, idx);
-                                    }}
-                                    disabled={uploadingIdx === idx}
-                                  />
-                                  <button className="h-full px-5 rounded-xl bg-primary text-black flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50">
-                                    {uploadingIdx === idx ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                                  </button>
+                                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(file, idx); }} disabled={uploadingIdx === idx} />
+                                  <button className="h-full px-7 rounded-[22px] bg-primary text-black flex items-center gap-2 shadow-xl hover:opacity-90 disabled:opacity-50">{uploadingIdx === idx ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}</button>
                                 </div>
                              </div>
-                             {project.imageUrl && (
-                              <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-black/60 relative group-hover:border-primary/50 transition-colors">
-                                <img src={project.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                              </div>
-                            )}
+                             {project.imageUrl && <div className="aspect-[16/10] rounded-[36px] overflow-hidden border-2 border-border bg-black shadow-inner"><img src={project.imageUrl} alt="Preview" className="w-full h-full object-cover" /></div>}
                           </div>
                         </div>
                       </div>
                     ))}
-                    <button 
-                      onClick={() => updateContent('projects', [...(siteData.content.projects || []), { title: 'Nuevo Proyecto', description: '', imageUrl: '' }])}
-                      className="w-full py-5 border border-dashed border-[#27272a] rounded-[28px] text-[10px] font-black uppercase text-primary hover:bg-primary/5 flex justify-center gap-2 items-center transition-all active:scale-[0.98]"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Agregar Mi Proyecto
-                    </button>
+                    <button onClick={() => updateContent('projects', [...(siteData.content.projects || []), { title: 'Nuevo Proyecto', description: '', imageUrl: '' }])} className="w-full py-7 border-2 border-dashed border-border rounded-[48px] text-[12px] font-black uppercase tracking-[0.3em] text-primary hover:bg-primary/5 hover:border-primary/40 flex justify-center gap-3 items-center transition-all active:scale-[0.98]"><Plus className="w-5 h-5" /> Inyectar Proyecto</button>
                   </div>
                 </Section>
               )}
-            </div>
+            </motion.div>
           )}
 
           {activeTab === 'qr' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-left-2 transition-all">
-               <Section title="Configurar QR" icon={QrCode}>
-                  <div className="bg-[#1a1a1c] p-8 rounded-[40px] border border-[#27272a] flex flex-col items-center gap-6 text-center shadow-2xl">
-                    <div id="preview-qr" className="p-5 bg-white rounded-[32px] shadow-2xl relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-16">
+               <Section title="Puerta al Ecosistema" icon={QrCode}>
+                  <div className="bg-muted p-10 md:p-14 rounded-[64px] border border-border flex flex-col items-center gap-12 text-center shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-2.5 bg-gradient-brand opacity-80" />
+                    <div id="preview-qr" className="p-10 bg-white rounded-[56px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] transform hover:scale-[1.03] transition-all duration-700 ring-[12px] ring-white/10 group-hover:ring-primary/20">
                       <QRCodeSVG 
                         value={`https://standmx.com/qr/${microsite?.id || 'demo'}`} 
-                        size={200}
-                        level="H"
-                        includeMargin={false}
-                        fgColor="#000000"
-                        imageSettings={{
-                           src: "/logo-mini.png",
-                           height: 38,
-                           width: 38,
-                           excavate: true,
-                        }}
+                        size={260} 
+                        level="H" 
+                        includeMargin={false} 
+                        fgColor="#000000" 
+                        imageSettings={microsite?.logo_url ? { src: microsite.logo_url, height: 48, width: 48, excavate: true } : undefined}
                       />
                     </div>
-                    <div>
-                      <h4 className="font-black text-white mb-2 leading-tight">Este QR Nunca Cambia</h4>
-                      <p className="text-[11px] text-zinc-500 px-6 font-medium leading-relaxed">Tus tarjetas impresas funcionan para siempre. Si cambias de plan o de link, nosotros redirigimos automáticamente.</p>
+                    <div className="space-y-4">
+                       <h4 className="text-3xl font-black text-foreground tracking-tighter">QR Estático Vitalicio</h4>
+                       <p className="text-[11px] text-muted-foreground px-8 leading-relaxed font-black uppercase tracking-[0.3em] opacity-70">Tu marca evoluciona, tu QR impreso permanece.</p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                       <button onClick={downloadQR} className="flex items-center justify-center gap-3 bg-zinc-800 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-750 transition-all active:scale-95">
-                          <Download className="w-4 h-4" /> Bajar PNG
-                       </button>
-                       <button className="flex items-center justify-center gap-3 bg-primary/10 border border-primary/20 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/20 transition-all active:scale-95">
-                          <Share2 className="w-4 h-4" /> Link Directo
+                    <div className="w-full pt-6">
+                       <button onClick={downloadQR} className="w-full flex items-center justify-center gap-5 bg-primary text-black py-7 rounded-[32px] text-[12px] font-black uppercase tracking-[0.4em] shadow-[0_20px_50px_rgba(0,201,177,0.4)] hover:opacity-90 active:scale-95 transition-all">
+                          <Download className="w-6 h-6" strokeWidth={3} /> Exportar PNG (Industrial)
                        </button>
                     </div>
                   </div>
                </Section>
-            </div>
+            </motion.div>
           )}
 
           {activeTab === 'analíticas' && (
-             <div className="space-y-6 animate-in fade-in slide-in-from-left-2 transition-all">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   <StatCard label="Escaneos" value={stats?.totalScans || 0} icon={TrendingUp} color="#00c9b1" loading={analyticsLoading} />
-                   <StatCard label="Live Sites" value={1} icon={Globe} color="#6366f1" loading={analyticsLoading} />
+             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="space-y-12">
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-8">
+                   <StatCard label="Tráfico Total" value={stats?.totalScans || 0} icon={TrendingUp} color="#00c9b1" loading={analyticsLoading} />
+                   <StatCard label="Up-Time Cloud" value="99.9%" icon={Globe} color="#6366f1" loading={analyticsLoading} />
                 </div>
-                <Section title="Vistas por País" icon={MapPin}>
-                   <div className="space-y-3">
+                <Section title="Vistas Geográficas" icon={MapPin}>
+                   <div className="space-y-5">
                       {Object.entries(stats?.byCountry || {}).map(([country, count]: any, idx: number) => (
-                         <div key={idx} className="flex justify-between items-center p-4 bg-black/40 rounded-2xl border border-white/5">
-                            <span className="text-xs font-black text-white uppercase">{country}</span>
-                            <span className="text-xs font-mono text-primary font-black">{count}</span>
+                         <div key={idx} className="flex justify-between items-center p-7 bg-muted/20 backdrop-blur-md rounded-[36px] border border-border shadow-inner">
+                            <span className="text-xs font-black text-foreground uppercase tracking-[0.3em]">{country}</span>
+                            <span className="text-xs font-mono text-primary font-black bg-primary/10 px-6 py-2.5 rounded-full border border-primary/20">{count} Scans</span>
                          </div>
                       ))}
-                      {Object.keys(stats?.byCountry || {}).length === 0 && <p className="text-xs text-zinc-600 italic py-4">Sin datos de tráfico aún.</p>}
+                      {Object.keys(stats?.byCountry || {}).length === 0 && <p className="text-[11px] text-muted-foreground italic py-16 text-center font-black tracking-[0.5em] uppercase opacity-30">Waiting for global triggers...</p>}
                    </div>
                 </Section>
-             </div>
+             </motion.div>
           )}
-        </div>
+        </main>
       </div>
 
-      {/* ── PANEL PREVIEW (DERECHAs / CENTRO) ────────────────────────── */}
-      <div className={`flex-1 bg-[#0d0d0f] md:flex flex-col items-center justify-center relative p-4 md:p-8 order-2 md:order-3 ${showMobilePreview ? 'flex fixed inset-0 z-40 md:relative md:z-auto' : 'hidden md:flex'}`}>
-        
-        {/* Mobile Header for Preview Mode */}
-        <div className="md:hidden absolute top-0 left-0 w-full p-4 flex items-center justify-between border-b border-white/5 bg-[#0d0d0f]/80 backdrop-blur-xl shrink-0 z-10">
-           <button onClick={() => setShowMobilePreview(false)} className="flex items-center gap-2 text-zinc-500 font-bold text-xs uppercase">
-              <ChevronLeft className="w-4 h-4" /> Volver al Editor
+      {/* ── PANEL PREVIEW ────────────────────────────────────────── */}
+      <div className={`flex-1 bg-background md:flex flex-col items-center justify-center relative p-6 md:p-14 order-2 md:order-3 ${showMobilePreview ? 'fixed inset-0 z-[110] bg-background' : 'hidden md:flex'}`}>
+        <div className="md:hidden absolute top-0 left-0 w-full p-8 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur-2xl z-50">
+           <button onClick={() => setShowMobilePreview(false)} className="flex items-center gap-3 text-muted-foreground font-black text-[11px] uppercase tracking-[0.3em] bg-muted/80 px-6 py-4 rounded-full shadow-lg active:scale-95 transition-all">
+              <ChevronLeft className="w-5 h-5" /> Regresar
            </button>
-           <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Vista Previa Live</span>
+           <div className="flex flex-col items-end gap-1">
+              <span className="text-[11px] font-black text-primary uppercase tracking-[0.4em] italic shadow-primary/20 drop-shadow-sm">Monitor Live</span>
+              <span className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">Sinc: Real-time</span>
+           </div>
         </div>
-
-        <div className="absolute top-20 md:top-8 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 z-10">
-          <div className="bg-[#18181b]/80 backdrop-blur-xl border border-white/5 rounded-full h-12 px-6 flex items-center justify-between shadow-2xl">
-            <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-2 truncate">
-              <span className="text-primary font-black">https://</span>
-              <span className="text-zinc-200 font-bold">{siteData.slug || 'slug'}</span>
+        <div className="absolute top-32 md:top-14 left-1/2 -translate-x-1/2 w-full max-w-sm px-8 z-20">
+          <div className="bg-card/90 backdrop-blur-3xl border border-border rounded-full h-16 px-10 flex items-center justify-between shadow-[0_40px_80px_-20px_rgba(0,0,0,0.5)] ring-4 ring-white/5">
+            <span className="text-[11px] text-muted-foreground font-mono flex items-center gap-3 truncate pr-6">
+              <span className="text-primary/80 font-black">https://</span>
+              <span className="text-foreground font-black tracking-tight">{siteData.slug || 'brand'}</span>
               <span className="opacity-40">.standmx.com</span>
             </span>
-            <ExternalLink className="w-3.5 h-3.5 text-zinc-500" />
+            <ExternalLink className="w-5 h-5 text-primary drop-shadow-xl" />
           </div>
         </div>
-
-        {/* Dynamic Display (iPhone Mockup on Desktop, Full Mobile View on actual mobile toggle) */}
-        <div className="relative w-full h-full md:w-[360px] md:h-[720px] bg-black md:rounded-[60px] md:border-[10px] md:border-[#1a1a1c] shadow-[0_60px_100px_-30px_rgba(0,0,0,0.9)] overflow-hidden scale-[0.95] md:scale-[0.85] lg:scale-[0.95] origin-center transition-all duration-500">
-          {/* Notch for Mockup */}
-          <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-7 bg-[#1a1a1c] rounded-b-3xl z-50 border-x border-b border-white/5" />
-          
-          <div className="w-full h-full overflow-y-auto scrollbar-hide pt-20 md:pt-0">
-            <MicrositeViewer siteData={{ ...siteData }} />
+        <div className="relative w-full h-full md:w-[400px] md:h-[820px] bg-black md:rounded-[72px] md:border-[16px] md:border-card shadow-[0_120px_250px_-60px_rgba(0,0,0,1)] overflow-hidden scale-[0.92] md:scale-[0.82] lg:scale-[0.92] origin-center transition-all duration-1000 group">
+          <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-[180px] h-10 bg-card rounded-b-[32px] z-[60] shadow-inner" />
+          <div className="w-full h-full overflow-y-auto scrollbar-hide pt-32 md:pt-0">
+            <MicrositeViewer siteData={{ ...siteData, name: siteData.content.displayName }} />
           </div>
         </div>
       </div>
@@ -518,115 +448,94 @@ export default function DashboardPage() {
   );
 }
 
-// UI Reusable Components
-function NavIcon({ icon: Icon, active, onClick }: any) {
+// Reusable Subcomponents (Typed)
+interface NavIconProps { icon: LucideIcon; active: boolean; onClick: () => void; label: string; }
+function NavIcon({ icon: Icon, active, onClick, label }: NavIconProps) {
   return (
-    <button 
-      onClick={onClick} 
-      className={`relative p-4 rounded-2xl transition-all duration-300 group ${
-        active 
-          ? 'bg-primary text-black shadow-[0_0_20px_rgba(0,201,177,0.4)] scale-110' 
-          : 'text-zinc-500 hover:text-white hover:bg-white/5'
-      }`}
-    >
-      <Icon className="w-5 h-5" strokeWidth={active ? 3 : 2} />
-      {active && (
-        <motion.div 
-          layoutId="nav-glow" 
-          className="absolute inset-0 rounded-2xl bg-primary/20 blur-md pointer-events-none" 
-        />
-      )}
+    <button onClick={onClick} className={`relative p-4 md:p-5 rounded-3xl flex flex-col items-center gap-2.5 transition-all duration-700 group ${active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+      <div className={`p-4 rounded-[22px] transition-all duration-500 ${active ? 'bg-primary/10 shadow-[0_0_30px_rgba(0,201,177,0.3)]' : 'group-hover:bg-muted'}`}>
+         <Icon className="w-6 h-6 md:w-7 md:h-7" strokeWidth={active ? 3 : 2} />
+      </div>
+      <span className={`text-[9px] md:hidden font-black uppercase tracking-[0.3em] transition-opacity ${active ? 'opacity-100' : 'opacity-40'}`}>{label}</span>
+      {active && <motion.div layoutId="nav-glow-pulse" className="absolute inset-0 bg-primary/5 rounded-[40px] -z-10 md:hidden" />}
     </button>
   );
 }
 
-function Section({ title, icon: Icon, children }: any) {
+interface SectionProps { title: string; icon: LucideIcon; children: React.ReactNode; }
+function Section({ title, icon: Icon, children }: SectionProps) {
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-2.5 text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] pl-1">
-        <Icon className="w-3.5 h-3.5 text-primary/60" /> {title}
+    <section className="space-y-6 w-full">
+      <div className="flex items-center gap-4 text-[12px] font-black text-muted-foreground uppercase tracking-[0.4em] pl-3 drop-shadow-md">
+        <Icon className="w-4.5 h-4.5 text-primary" /> {title}
       </div>
-      <div className="grid gap-6 bg-[#161618] p-6 rounded-[32px] border border-white/5 shadow-inner relative group hover:border-white/10 transition-colors">
+      <div className="grid gap-10 bg-card border border-border rounded-[56px] p-10 md:p-14 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.4)] relative overflow-hidden transition-all hover:border-primary/30">
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-brand opacity-20" />
         {children}
       </div>
     </section>
   );
 }
 
-function InputField({ label, value, onChange, isArea }: any) {
+interface InputFieldProps { label: string; value: string; onChange: (v: string) => void; isArea?: boolean; }
+function InputField({ label, value, onChange, isArea }: InputFieldProps) {
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] text-zinc-600 font-black uppercase tracking-widest px-1">{label}</label>
+    <div className="space-y-4 w-full">
+      <label className="text-[12px] text-muted-foreground font-black uppercase tracking-[0.4em] px-3">{label}</label>
       {isArea ? (
-        <textarea 
-          value={value} 
-          onChange={e => onChange(e.target.value)} 
-          className="w-full bg-[#0d0d0f] border border-[#27272a] rounded-2xl px-5 py-4 text-sm text-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none min-h-[100px] resize-none transition-all placeholder:text-zinc-800" 
-        />
+        <textarea value={value} onChange={e => onChange(e.target.value)} className="w-full bg-muted border border-border rounded-[32px] px-8 py-7 text-sm font-black text-foreground focus:border-primary focus:ring-[12px] focus:ring-primary/5 outline-none min-h-[180px] resize-none transition-all placeholder:opacity-20" />
       ) : (
-        <input 
-          type="text" 
-          value={value} 
-          onChange={e => onChange(e.target.value)} 
-          className="w-full bg-[#0d0d0f] border border-[#27272a] rounded-2xl px-5 py-4 text-sm text-zinc-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-zinc-800" 
-        />
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} className="w-full bg-muted border border-border rounded-[32px] px-8 py-7 text-sm font-black text-foreground focus:border-primary focus:ring-[12px] focus:ring-primary/5 outline-none transition-all" />
       )}
     </div>
   );
 }
 
-function SlugField({ value, onChange }: any) {
+interface SlugFieldProps { value: string; onChange: (v: string) => void; }
+function SlugField({ value, onChange }: SlugFieldProps) {
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] text-zinc-600 font-black uppercase tracking-widest px-1">Slug URL</label>
-      <div className="flex items-stretch group">
-        <div className="bg-[#1c1c1f] border border-[#27272a] border-r-0 rounded-l-2xl flex items-center px-4 text-[10px] font-black text-zinc-600 uppercase tracking-tighter">https://</div>
-        <input 
-          type="text" 
-          value={value} 
-          onChange={e => onChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} 
-          className="w-full bg-[#0d0d0f] border border-[#27272a] px-5 py-4 text-sm text-primary font-black outline-none focus:border-primary transition-all group-hover:border-primary/30" 
-        />
-        <div className="bg-[#1c1c1f] border border-[#27272a] border-l-0 rounded-r-2xl flex items-center px-4 text-[10px] font-black text-zinc-600 lowercase tracking-tight">.standmx.com</div>
+    <div className="space-y-4 w-full">
+      <label className="text-[12px] text-muted-foreground font-black uppercase tracking-[0.4em] px-3">Ecosistema ID</label>
+      <div className="flex flex-col xl:flex-row items-stretch gap-4 xl:gap-0 xl:rounded-[32px] xl:overflow-hidden xl:border xl:border-border focus-within:border-primary focus-within:ring-[12px] focus-within:ring-primary/5 transition-all">
+        <div className="hidden xl:flex bg-background px-8 items-center text-[11px] font-black text-muted-foreground uppercase border-r border-border opacity-60">https://</div>
+        <input type="text" value={value} onChange={e => onChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="flex-1 bg-muted xl:bg-background px-8 py-7 text-sm text-primary font-black outline-none placeholder:opacity-20 border xl:border-0 border-border rounded-[32px] xl:rounded-none" placeholder="mi-nombre-digital" />
+        <div className="hidden xl:flex bg-background px-8 items-center text-[11px] font-black text-muted-foreground lowercase border-l border-border opacity-60">.standmx.com</div>
+        <div className="xl:hidden flex justify-between px-6 text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest">
+           <span>https://</span>
+           <span>.standmx.com</span>
+        </div>
       </div>
     </div>
   );
 }
 
-function SelectField({ label, value, options, onChange }: any) {
+interface SelectFieldProps { label: string; value: string; options: string[]; onChange: (v: string) => void; }
+function SelectField({ label, value, options, onChange }: SelectFieldProps) {
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] text-zinc-600 font-black uppercase tracking-widest px-1">{label}</label>
-      <div className="relative">
-        <select 
-          value={value} 
-          onChange={e => onChange(e.target.value)} 
-          className="w-full bg-[#0d0d0f] border border-[#27272a] rounded-2xl px-5 py-4 text-sm text-zinc-200 outline-none appearance-none cursor-pointer focus:border-primary transition-all pr-12"
-        >
+    <div className="space-y-4 w-full">
+      <label className="text-[12px] text-muted-foreground font-black uppercase tracking-[0.4em] px-3">{label}</label>
+      <div className="relative group">
+        <select value={value} onChange={e => onChange(e.target.value)} className="w-full bg-muted border border-border rounded-[32px] px-8 py-7 text-base font-black text-foreground outline-none appearance-none cursor-pointer focus:border-primary transition-all pr-20 group-hover:bg-muted/100 uppercase tracking-tighter">
           {options.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
-        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-           <Smartphone className="w-4 h-4 rotate-180" />
+        <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-primary group-hover:scale-125 transition-transform duration-500">
+           <ChevronRight className="w-6 h-6 rotate-90" strokeWidth={5} />
         </div>
       </div>
     </div>
   );
 }
 
-function ColorInput({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) {
+interface ColorInputProps { label: string; value: string; onChange: (v: string) => void; }
+function ColorInput({ label, value, onChange }: ColorInputProps) {
   return (
-    <div className="space-y-2 group">
-      <label className="text-[10px] text-zinc-600 font-black uppercase tracking-widest px-1">{label}</label>
-      <div className="flex items-center gap-3 bg-[#0d0d0f] border border-[#27272a] rounded-2xl p-2.5 group-hover:border-primary/30 transition-all cursor-pointer">
-        <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/5 shrink-0 shadow-lg">
-          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 w-[200%] h-[200%] cursor-pointer -translate-x-1/4 -translate-y-1/4" />
+    <div className="space-y-4 group w-full">
+      <label className="text-[12px] text-muted-foreground font-black uppercase tracking-[0.4em] px-3">{label}</label>
+      <div className="flex items-center gap-6 bg-muted border border-border rounded-[40px] p-4 hover:border-primary/50 transition-all cursor-pointer shadow-inner relative overflow-hidden group">
+        <div className="relative w-16 h-16 rounded-[22px] overflow-hidden border-2 border-white/10 shrink-0 shadow-2xl transition-transform group-hover:scale-110 duration-500">
+          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 w-[300%] h-[300%] cursor-pointer -translate-x-1/4 -translate-y-1/4" />
         </div>
-        <input 
-          type="text" 
-          value={value} 
-          onChange={(e) => onChange(e.target.value.toUpperCase())} 
-          className="bg-transparent text-[11px] font-black font-mono text-zinc-400 w-full outline-none uppercase tracking-widest" 
-        />
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} className="bg-transparent text-sm font-black font-mono text-foreground/90 w-full outline-none uppercase tracking-[0.3em]" />
       </div>
     </div>
   );
@@ -634,16 +543,17 @@ function ColorInput({ label, value, onChange }: { label: string, value: string, 
 
 function StatCard({ label, value, icon: Icon, color, loading }: any) {
    return (
-      <div className="bg-[#161618] border border-white/5 p-6 rounded-[32px] space-y-4 hover:border-white/10 transition-colors shadow-inner">
-         <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5" style={{ color }}>
-               <Icon className="w-5 h-5" />
+      <div className="bg-card border border-border p-12 rounded-[64px] space-y-10 hover:border-primary/30 transition-all shadow-[0_60px_120px_-30px_rgba(0,0,0,0.5)] relative overflow-hidden group w-full">
+         <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 blur-[100px] rounded-full -translate-y-20 translate-x-20 opacity-40 group-hover:opacity-100 transition-opacity" />
+         <div className="flex items-center justify-between relative z-10">
+            <div className="w-16 h-16 rounded-[32px] flex items-center justify-center bg-background border-2 border-border/80 shadow-2xl" style={{ color }}>
+               <Icon className="w-8 h-8" strokeWidth={3} />
             </div>
-            {loading && <Loader2 className="w-4 h-4 text-zinc-600 animate-spin" />}
+            {loading && <Loader2 className="w-7 h-7 text-primary animate-spin" />}
          </div>
-         <div>
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-1">{label}</p>
-            <p className="text-3xl font-black text-white">{value}</p>
+         <div className="relative z-10">
+            <p className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.4em] mb-3 opacity-60 group-hover:opacity-100 transition-opacity">{label}</p>
+            <p className="text-6xl font-black text-foreground tracking-tighter leading-none">{value}</p>
          </div>
       </div>
    );

@@ -50,7 +50,7 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            © 2026 {config.name}. Hecho con ♥️ en México.
+            © 2026 {config.name} by JNDRX - México.
           </p>
           <div className="flex items-center gap-6">
             <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Términos</Link>

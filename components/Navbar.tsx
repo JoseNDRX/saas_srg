@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Layers, Menu, X, ArrowRight } from 'lucide-react';
+import { Layers, Menu, X, ArrowRight, ChevronRight } from 'lucide-react';
 import { useBrand, BRAND_CONFIG } from '@/hooks/useBrand';
 import { ThemeToggle } from './ThemeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -70,12 +70,12 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* MOBILE TOGGLE */}
+          {/* MOBILE TOGGLE (HEADER) */}
           <div className="flex md:hidden items-center gap-4 z-[110]">
             <ThemeToggle variant="navbar" />
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-foreground active:scale-90 transition-all focus:outline-none"
+              className="p-2.5 rounded-xl bg-muted/50 border border-border/50 text-foreground active:scale-90 transition-all focus:outline-none"
               aria-label="Toggle menu"
             >
               <AnimatePresence mode="wait">
@@ -94,11 +94,10 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* MOBILE MENU OVERLAY (MOVED OUTSIDE HEADER FOR GLOBAL BLUR) */}
+      {/* MOBILE MENU OVERLAY */}
       <AnimatePresence>
         {isMenuOpen && (
           <div className="md:hidden">
-            {/* Full Screen Backdrop Blur */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -113,8 +112,19 @@ export function Navbar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200, bounce: 0 }}
-              className="fixed right-0 top-0 bottom-0 w-[85%] z-[1002] bg-background/95 backdrop-blur-3xl pt-32 px-10 flex flex-col border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.5)]"
+              className="fixed right-0 top-0 bottom-0 w-[85%] z-[1002] bg-background/95 backdrop-blur-3xl pt-10 px-10 flex flex-col border-l border-border/50 shadow-[-50px_0_100px_rgba(0,0,0,0.5)] overflow-y-auto custom-scrollbar"
             >
+              {/* Internal Close Button */}
+              <div className="flex justify-end mb-8 shrink-0">
+                <button 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-3 rounded-full bg-muted hover:bg-muted/80 text-foreground transition-all active:scale-90 border border-border/20 shadow-sm"
+                  aria-label="Close menu"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
               <div className="flex flex-col gap-10">
                 {NAV_LINKS.map((link, i) => (
                   <motion.div
@@ -129,27 +139,41 @@ export function Navbar() {
                       className="text-4xl font-black text-foreground tracking-tighter hover:text-primary transition-colors flex items-center justify-between group"
                     >
                       {link.label}
-                      <ArrowRight className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
+                      <ChevronRight className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
                     </Link>
                   </motion.div>
                 ))}
               </div>
 
-              <div className="mt-auto pb-16 flex flex-col gap-5">
-                <Link 
-                  href="/login" 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="w-full py-5 rounded-2xl border border-white/10 text-center font-black text-xs uppercase tracking-[0.2em] text-muted-foreground active:bg-white/5 transition-colors"
+              {/* ACTION BUTTONS: mt-10 instead of mt-auto to keep distribution consistent */}
+              <div className="mt-10 pb-16 flex flex-col gap-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  Acceder a mi panel
-                </Link>
-                <Link 
-                  href="/register" 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="w-full py-5 rounded-3xl bg-gradient-brand text-black text-center font-black text-xs uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(0,201,177,0.3)] active:scale-95 transition-all flex justify-center gap-3 items-center"
+                  <Link 
+                    href="/login" 
+                    onClick={() => setIsMenuOpen(false)}
+                    className="w-full py-5 rounded-2xl border border-border text-center font-black text-xs uppercase tracking-[0.2em] text-muted-foreground active:bg-muted/100 transition-colors block"
+                  >
+                    Acceder a mi panel
+                  </Link>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
                 >
-                  Empezar Ahora <ArrowRight className="w-5 h-5" />
-                </Link>
+                  <Link 
+                    href="/register" 
+                    onClick={() => setIsMenuOpen(false)}
+                    className="w-full py-5 rounded-3xl bg-gradient-brand text-black text-center font-black text-xs uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(0,201,177,0.3)] active:scale-95 transition-all flex justify-center gap-3 items-center block"
+                  >
+                    Empezar Ahora <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </motion.div>
               </div>
             </motion.div>
           </div>

@@ -74,11 +74,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['profiles']['Row'],
-          'created_at' | 'updated_at'
-        >;
-        Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+        Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { email: string; id: string };
+        Update: Partial<Database['public']['Tables']['profiles']['Row']>;
       };
 
       microsites: {
@@ -86,19 +83,17 @@ export interface Database {
           id: string;
           owner_id: string;
           slug: string;
-          hash: string;
-          type: 'vcard' | 'menu' | 'showcase';
-          content: Json; // VCardContent | MenuContent | ShowcaseContent
+          hash: string | null;
+          type: string; 
+          config: any;
+          content: any;
           published: boolean;
           custom_domain: string | null;
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['microsites']['Row'],
-          'created_at' | 'updated_at'
-        >;
-        Update: Partial<Database['public']['Tables']['microsites']['Insert']>;
+        Insert: Partial<Database['public']['Tables']['microsites']['Row']> & { owner_id: string; slug: string; type: string };
+        Update: Partial<Database['public']['Tables']['microsites']['Row']>;
       };
 
       qr_codes: {
@@ -111,31 +106,28 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['qr_codes']['Row'],
-          'created_at' | 'updated_at'
-        >;
-        Update: Partial<Database['public']['Tables']['qr_codes']['Insert']>;
+        Insert: Partial<Database['public']['Tables']['qr_codes']['Row']> & { microsite_id: string; current_url: string };
+        Update: Partial<Database['public']['Tables']['qr_codes']['Row']>;
       };
 
       qr_analytics: {
         Row: {
           id: string;
-          qr_code_id: string;
+          microsite_id: string;
           scanned_at: string;
           user_agent: string | null;
           ip_country: string | null;
           referrer: string | null;
         };
-        Insert: Omit<Database['public']['Tables']['qr_analytics']['Row'], 'id'>;
-        Update: never;
+        Insert: Partial<Database['public']['Tables']['qr_analytics']['Row']> & { microsite_id: string };
+        Update: Partial<Database['public']['Tables']['qr_analytics']['Row']>;
       };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
       subscription_tier: 'free' | 'basic' | 'pro' | 'elite';
-      microsite_type: 'vcard' | 'menu' | 'showcase';
+      microsite_type: 'vCard' | 'Menu' | 'Showcase' | 'vcard' | 'menu' | 'showcase';
     };
   };
 }
