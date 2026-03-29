@@ -7,13 +7,13 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
   const [hostWithoutPort] = hostname.split(':');
-  
+
   console.log(`[PROXY] Host: ${hostWithoutPort} | Path: ${pathname}`);
 
   // EXIT EARLY for reserved paths
   if (
-    pathname === '/login' || 
-    pathname === '/register' || 
+    pathname === '/login' ||
+    pathname === '/register' ||
     pathname.startsWith('/dashboard') ||
     pathname.includes('.') ||
     pathname.startsWith('/_next/')
@@ -29,16 +29,16 @@ export function proxy(request: NextRequest) {
   }
 
   // 2. Identificadores de Entorno
-  const isLocalhost = hostWithoutPort.endsWith('localhost') || 
-                      hostWithoutPort === '127.0.0.1' || 
-                      hostWithoutPort.startsWith('192.168.') ||
-                      hostWithoutPort.includes('ngrok-free.dev') ||
-                      hostWithoutPort.includes('ngrok-free.app') ||
-                      hostWithoutPort.includes('vercel.app');
-  
+  const isLocalhost = hostWithoutPort.endsWith('localhost') ||
+    hostWithoutPort === '127.0.0.1' ||
+    hostWithoutPort.startsWith('192.168.') ||
+    hostWithoutPort.includes('ngrok-free.dev') ||
+    hostWithoutPort.includes('ngrok-free.app') ||
+    hostWithoutPort.includes('saassrg2026.vercel.app/');
+
   const isStandMXBase = hostWithoutPort === 'standmx.com' || hostWithoutPort === 'www.standmx.com';
   const parts = hostWithoutPort.split('.');
-  
+
   // Custom domain (Elite tier)
   if (!hostWithoutPort.includes('standmx.com') && !hostWithoutPort.includes('puestoweb.com') && !isLocalhost) {
     const url = request.nextUrl.clone();
@@ -89,8 +89,8 @@ export function proxy(request: NextRequest) {
 
 function isReservedPath(segment: string): boolean {
   return new Set([
-     'api', 'login', 'register', 'dashboard', 'docs', 'about', 'blog', 'contact',
-     'pricing', 'privacy', 'terms', 's', 'd', 'qr', 'view', '_next', 'custom-domain', 'demo'
+    'api', 'login', 'register', 'dashboard', 'docs', 'about', 'blog', 'contact',
+    'pricing', 'privacy', 'terms', 's', 'd', 'qr', 'view', '_next', 'custom-domain', 'demo'
   ]).has(segment.toLowerCase());
 }
 
